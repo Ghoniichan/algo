@@ -141,6 +141,51 @@ class Schedule:
         
         return score
     
+    def get_sched(self):
+        """Return the schedule as a formatted string"""
+        # Group sections by day
+        day_schedules = {day: [] for day in range(5)}  # 0=Monday to 4=Friday
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        
+        for section in self.assigned_sections:
+            for day in section.days:
+                day_schedules[day].append(section)
+        
+        result = "\n===== YOUR OPTIMIZED SCHEDULE =====\n"
+        
+        for day_num, sections in day_schedules.items():
+            result += f"\n{day_names[day_num]}:\n"
+            if not sections:
+                result += "  No classes\n"
+                continue
+            
+            # Sort sections by start time
+            sections.sort(key=lambda x: x.start_time)
+            
+            for section in sections:
+                start_hour, start_min = divmod(section.start_time, 60)
+                end_hour, end_min = divmod(section.end_time, 60)
+                start_am_pm = "AM" if start_hour < 12 else "PM"
+                end_am_pm = "AM" if end_hour < 12 else "PM"
+                start_hour = start_hour if start_hour <= 12 else start_hour - 12
+                end_hour = end_hour if end_hour <= 12 else end_hour - 12
+                if start_hour == 0: start_hour = 12
+                if end_hour == 0: end_hour = 12
+                
+                result += f"  {start_hour}:{start_min:02d} {start_am_pm} - {end_hour}:{end_min:02d} {end_am_pm}: {section.course_id} (Section {section.section_id})\n"
+                
+                # Show break time to next class if applicable
+                if sections.index(section) < len(sections) - 1:
+                    next_section = sections[sections.index(section) + 1]
+                    break_time = next_section.start_time - section.end_time
+                    break_hours, break_mins = divmod(break_time, 60)
+                    if break_time > 0:
+                        result += f"  ↓ {break_hours}h {break_mins}m break ↓\n"
+        
+        result += f"\nTotal Score: {self.score}\n"
+        
+        return result
+    
     def print_schedule(self):
         """Print the schedule in a readable format"""
         # Group sections by day

@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import scheduler
+
 
 class ScrollableFrame(ttk.Frame):
     def __init__(self, container, *args, **kwargs):
@@ -36,6 +37,58 @@ class PreferencesGUI(tk.Tk):
         ttk.Separator(self.main_frame, orient="horizontal").pack(fill=tk.X, pady=10)
         self.init_preferences_section()
         ttk.Button(self.main_frame, text="Get Schedule", command=self.save_preferences).pack(pady=20)
+    
+    def show_schedule_window(self, schedule_text, title="Your Schedule"):
+        # Create a new top-level window
+        schedule_window = tk.Toplevel(self)
+        schedule_window.title(title)
+        schedule_window.geometry("600x500")
+        
+        # Create a frame with scrollbars
+        frame = ttk.Frame(schedule_window)
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Add scrollbars
+        y_scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL)
+        y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        x_scrollbar = ttk.Scrollbar(frame, orient=tk.HORIZONTAL)
+        x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        # Create text widget with scrollbars
+        text_widget = tk.Text(
+            frame,
+            wrap=tk.NONE,
+            yscrollcommand=y_scrollbar.set,
+            xscrollcommand=x_scrollbar.set,
+            font=("Courier", 12)  # Monospaced font for better alignment
+        )
+        text_widget.pack(fill=tk.BOTH, expand=True)
+        
+        # Configure scrollbars
+        y_scrollbar.config(command=text_widget.yview)
+        x_scrollbar.config(command=text_widget.xview)
+        
+        # Insert the schedule text
+        text_widget.insert(tk.END, schedule_text)
+        text_widget.config(state=tk.DISABLED)  # Make it read-only
+        
+        # Add a close button
+        close_button = ttk.Button(
+            schedule_window, 
+            text="Close", 
+            command=schedule_window.destroy
+        )
+        close_button.pack(pady=10)
+        
+        # Focus the new window
+        schedule_window.focus_set()
+        
+        # Optional: Make window modal
+        schedule_window.transient(self)
+        schedule_window.grab_set()
+        
+        return schedule_window
 
     def init_preferences_section(self):
         frame = ttk.Frame(self.main_frame)
@@ -140,6 +193,25 @@ class PreferencesGUI(tk.Tk):
 
         ttk.Button(section_frame, text="Add Section", command=self.add_section).grid(row=10, column=0, columnspan=2, pady=10)
 
+    def validate_inputs(self):
+        required_fields = [
+            self.course_code.get(),
+            self.course_name.get(),
+            self.section_id.get(),
+            self.section_course_id.get(),
+            self.professor.get(),
+            self.section_start.get(),
+            self.section_end.get(),
+            self.scheduling_algo.get()
+        ]
+        if any(not field.strip() or field == "Choose Algorithm" for field in required_fields):
+            messagebox.showerror("Missing Fields", "Please fill in all required fields and select an algorithm.")
+            return False
+        if not any(var.get() for var in self.days_vars.values()):
+            messagebox.showerror("Missing Days", "Please select at least one day.")
+            return False
+        return True
+    
     def add_course(self):
         course_code = self.course_code.get()
         course_name = self.course_name.get()
@@ -206,35 +278,41 @@ class PreferencesGUI(tk.Tk):
                 print(type(s))
         
     def save_preferences(self):
-
-        start_hour = int(self.start_time.get().split(':')[0])
-        end_hour = int(self.end_time.get().split(':')[0])
-
-        p = {k: slider.get() for k, (var, slider) in self.prefs.items()}
-        preferences = scheduler.StudentPreferences()
-        preferences.no_morning_weight = p.get('avoid_morning_classes')      # Strong preference for no morning classes
-        preferences.free_days_weight = p.get('prefer_free_days')         # Strong preference for free days
-        preferences.early_dismissal_weight = p.get('prefer_early_dismissal')   # Moderate preference for early dismissal
-        preferences.consecutive_classes_weight = p.get('prefer_consecutive_classes')  # Low preference for consecutive classes
-        preferences.long_breaks_weight = p.get('prefer_long_breaks')       # High preference for long breaks
-        
-        preferences.preferred_earliest_time = start_hour * 60  # No classes before 10 AM
-        preferences.preferred_latest_time = end_hour * 60    # No classes after 5 PM
-        preferences.preferred_break_time = int(self.pref_break_time.get())
-
-        algo = self.scheduling_algo.get()
-
-        if algo == "Greedy Algorithm":
-            sched = scheduler.greedy_schedule_optimizer(self.courses, preferences)
-        elif algo == "Dynamic Algorithm":
-            sched = scheduler.dynamic_programming_scheduler(self.courses, preferences)
-        elif algo == "Backtracking Algorithm":
-            sched = scheduler.backtracking_scheduler(self.courses, preferences)
-        else:
-            print("Please select a scheduling algorithm.")
+        if not self.validate_inputs():
             return
-        
-        sched.print_schedule()
+
+        if messagebox.askyesno("Confirm", "Are you sure you want to proceed?"):
+            start_hour = int(self.start_time.get().split(':')[0])
+            end_hour = int(self.end_time.get().split(':')[0])
+
+            p = {k: slider.get() for k, (var, slider) in self.prefs.items()}
+            preferences = scheduler.StudentPreferences()
+            preferences.no_morning_weight = p.get('avoid_morning_classes')      # Strong preference for no morning classes
+            preferences.free_days_weight = p.get('prefer_free_days')         # Strong preference for free days
+            preferences.early_dismissal_weight = p.get('prefer_early_dismissal')   # Moderate preference for early dismissal
+            preferences.consecutive_classes_weight = p.get('prefer_consecutive_classes')  # Low preference for consecutive classes
+            preferences.long_breaks_weight = p.get('prefer_long_breaks')       # High preference for long breaks
+            
+            preferences.preferred_earliest_time = start_hour * 60  # No classes before 10 AM
+            preferences.preferred_latest_time = end_hour * 60    # No classes after 5 PM
+            preferences.preferred_break_time = int(self.pref_break_time.get())
+
+            algo = self.scheduling_algo.get()
+
+            if algo == "Greedy Algorithm":
+                sched = scheduler.greedy_schedule_optimizer(self.courses, preferences)
+            elif algo == "Dynamic Algorithm":
+                sched = scheduler.dynamic_programming_scheduler(self.courses, preferences)
+            elif algo == "Backtracking Algorithm":
+                sched = scheduler.backtracking_scheduler(self.courses, preferences)
+            else:
+                print("Please select a scheduling algorithm.")
+                return
+            
+            schedule_string = sched.get_sched()
+            self.show_schedule_window(schedule_string, f"Your Optimized Schedule - {algo}")
+        else:
+            messagebox.showinfo("Cancelled", "You cancelled saving your preferences.")
 
 if __name__ == "__main__":
     app = PreferencesGUI()
