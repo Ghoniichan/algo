@@ -25,7 +25,7 @@ class PreferencesGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Customize Your Preferences")
-        self.geometry("620x700")
+        self.geometry("500x650")
         self.courses = []
         scrollable = ScrollableFrame(self)
         scrollable.pack(fill=tk.BOTH, expand=True)
@@ -95,7 +95,7 @@ class PreferencesGUI(tk.Tk):
         frame.pack(fill=tk.BOTH, expand=True)
 
         # Preferred Start/End Time
-        ttk.Label(frame, text="Preferred Start Time:").grid(row=0, column=0, sticky="w")
+        ttk.Label(frame, text="Preferred Start Time:").grid(row=0, column=1, sticky="w")
         self.start_time = tk.StringVar(value="10:00 AM")
         start_times = [f"{h}:00 {'AM' if h < 12 else 'PM'}" for h in list(range(7, 12)) + list(range(12, 18))]
         ttk.Combobox(frame, values=start_times, textvariable=self.start_time, state="readonly").grid(row=0, column=1, padx=5, pady=2)
